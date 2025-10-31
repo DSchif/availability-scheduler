@@ -1,0 +1,48 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "Installing dependencies..."
+      - cd frontend
+      - npm ci
+
+  pre_build:
+    commands:
+      - echo "Getting API URL from backend stack..."
+      - |
+        API_URL=$(aws cloudformation describe-stacks \
+          --stack-name $API_STACK_NAME \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+          --output text)
+      - echo "API URL: $API_URL"
+      - export NEXT_PUBLIC_API_URL=$API_URL
+
+  build:
+    commands:
+      - echo "Building frontend..."
+      - npm run build
+      - echo "Exporting static files..."
+      - cd .next/static && ls -la
+
+  post_build:
+    commands:
+      - echo "Deploying to S3..."
+      - cd ../..
+      - aws s3 sync out/ s3://$FRONTEND_BUCKET/ --delete || aws s3 sync .next/ s3://$FRONTEND_BUCKET/ --delete
+      - echo "Creating CloudFront invalidation..."
+      - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+      - echo "Frontend deployment completed"
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: frontend
+  name: FrontendBuildOutput
+
+cache:
+  paths:
+    - 'frontend/node_modules/**/*'
+    - 'frontend/.next/cache/**/*'

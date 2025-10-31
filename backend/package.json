@@ -1,0 +1,35 @@
+{
+  "name": "availability-scheduler-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Availability Scheduler",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "deploy": "cd infrastructure && cdk deploy",
+    "synth": "cd infrastructure && cdk synth",
+    "bootstrap": "cd infrastructure && cdk bootstrap"
+  },
+  "keywords": ["availability", "scheduler", "lambda", "dynamodb"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.470.0",
+    "@aws-sdk/lib-dynamodb": "^3.470.0",
+    "source-map-support": "^0.5.21",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "aws-cdk": "^2.114.0",
+    "aws-cdk-lib": "^2.114.0",
+    "constructs": "^10.3.0",
+    "esbuild": "^0.19.8",
+    "jest": "^29.7.0",
+    "typescript": "^5.3.3"
+  }
+}

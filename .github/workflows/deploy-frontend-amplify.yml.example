@@ -1,0 +1,79 @@
+# Alternative: Deploy to AWS Amplify
+# Rename to deploy-frontend-amplify.yml to use this instead of Vercel
+
+name: Deploy Frontend to AWS Amplify
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-frontend-amplify.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-amplify:
+    name: Deploy Frontend to AWS Amplify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Amplify CLI
+        run: npm install -g @aws-amplify/cli
+
+      - name: Get API URL from CloudFormation
+        id: get-api-url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name AvailabilitySchedulerStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ steps.get-api-url.outputs.api_url }}
+        run: npm run build
+
+      - name: Deploy to Amplify
+        run: |
+          # If you have an Amplify app ID:
+          # aws amplify start-deployment \
+          #   --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+          #   --branch-name main \
+          #   --region ${{ env.AWS_REGION }}
+
+          echo "Amplify deployment triggered"
+          echo "Visit AWS Amplify Console to complete setup"
+
+      - name: Deployment Summary
+        run: |
+          echo "### 🎉 Frontend Built Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** \`${{ steps.get-api-url.outputs.api_url }}\`" >> $GITHUB_STEP_SUMMARY
