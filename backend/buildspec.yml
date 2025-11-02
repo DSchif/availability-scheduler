@@ -24,7 +24,7 @@ phases:
       - cd infrastructure
       - cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION || true
       - cdk synth
-      - cdk deploy --require-approval never --outputs-file outputs.json
+      - cdk deploy AvailabilitySchedulerStack --require-approval never --outputs-file outputs.json
 
   post_build:
     commands:
