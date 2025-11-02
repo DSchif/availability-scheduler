@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
+# Note: package-lock.json is now tracked for CI/CD reproducibility
 
 # Build outputs
 dist/
