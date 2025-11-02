@@ -30,8 +30,7 @@ phases:
   post_build:
     commands:
       - echo "Deploying to S3..."
-      - cd ../..
-      - aws s3 sync out/ s3://$FRONTEND_BUCKET/ --delete || aws s3 sync .next/ s3://$FRONTEND_BUCKET/ --delete
+      - aws s3 sync out/ s3://$FRONTEND_BUCKET/ --delete
       - echo "Creating CloudFront invalidation..."
       - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
       - echo "Frontend deployment completed"

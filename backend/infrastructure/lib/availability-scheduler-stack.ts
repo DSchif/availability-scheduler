@@ -1,8 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-import * as logs from 'aws-cdk-lib/aws-logs';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -41,93 +41,59 @@ export class AvailabilitySchedulerStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL
     });
 
-    // Lambda execution role environment variables
+    // Lambda environment variables
     const lambdaEnvironment = {
       TABLE_NAME: table.tableName,
       NODE_OPTIONS: '--enable-source-maps'
     };
 
-    // Lambda function configurations
-    const lambdaConfig = {
+    // Common Lambda configuration
+    const lambdaDefaults = {
       runtime: lambda.Runtime.NODEJS_18_X,
       memorySize: 512,
       timeout: cdk.Duration.seconds(30),
       environment: lambdaEnvironment,
-      logRetention: logs.RetentionDays.ONE_WEEK,
       bundling: {
         minify: true,
         sourceMap: true,
-        target: 'es2020',
-        externalModules: ['aws-sdk']
+        externalModules: ['@aws-sdk/*']
       }
     };
 
     // Create Event Lambda
-    const createEventFn = new lambda.Function(this, 'CreateEventFunction', {
-      ...lambdaConfig,
+    const createEventFn = new NodejsFunction(this, 'CreateEventFunction', {
+      ...lambdaDefaults,
       functionName: 'AvailabilityScheduler-CreateEvent',
       description: 'Creates a new availability event',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
-        bundling: {
-          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
-          command: [
-            'bash', '-c',
-            'npm install && npx esbuild src/handlers/createEvent.ts --bundle --outfile=/asset-output/index.js --platform=node --target=es2020 --external:aws-sdk --sourcemap'
-          ]
-        }
-      }),
-      handler: 'index.handler'
+      entry: path.join(__dirname, '../../src/handlers/createEvent.ts'),
+      handler: 'handler'
     });
 
     // Get Event Lambda
-    const getEventFn = new lambda.Function(this, 'GetEventFunction', {
-      ...lambdaConfig,
+    const getEventFn = new NodejsFunction(this, 'GetEventFunction', {
+      ...lambdaDefaults,
       functionName: 'AvailabilityScheduler-GetEvent',
       description: 'Gets an event by ID or share code',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
-        bundling: {
-          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
-          command: [
-            'bash', '-c',
-            'npm install && npx esbuild src/handlers/getEvent.ts --bundle --outfile=/asset-output/index.js --platform=node --target=es2020 --external:aws-sdk --sourcemap'
-          ]
-        }
-      }),
-      handler: 'index.handler'
+      entry: path.join(__dirname, '../../src/handlers/getEvent.ts'),
+      handler: 'handler'
     });
 
     // Submit Responses Lambda
-    const submitResponsesFn = new lambda.Function(this, 'SubmitResponsesFunction', {
-      ...lambdaConfig,
+    const submitResponsesFn = new NodejsFunction(this, 'SubmitResponsesFunction', {
+      ...lambdaDefaults,
       functionName: 'AvailabilityScheduler-SubmitResponses',
       description: 'Submits or updates availability responses',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
-        bundling: {
-          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
-          command: [
-            'bash', '-c',
-            'npm install && npx esbuild src/handlers/submitResponses.ts --bundle --outfile=/asset-output/index.js --platform=node --target=es2020 --external:aws-sdk --sourcemap'
-          ]
-        }
-      }),
-      handler: 'index.handler'
+      entry: path.join(__dirname, '../../src/handlers/submitResponses.ts'),
+      handler: 'handler'
     });
 
     // Get Summary Lambda
-    const getSummaryFn = new lambda.Function(this, 'GetSummaryFunction', {
-      ...lambdaConfig,
+    const getSummaryFn = new NodejsFunction(this, 'GetSummaryFunction', {
+      ...lambdaDefaults,
       functionName: 'AvailabilityScheduler-GetSummary',
       description: 'Gets aggregated summary for an event',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
-        bundling: {
-          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
-          command: [
-            'bash', '-c',
-            'npm install && npx esbuild src/handlers/getSummary.ts --bundle --outfile=/asset-output/index.js --platform=node --target=es2020 --external:aws-sdk --sourcemap'
-          ]
-        }
-      }),
-      handler: 'index.handler'
+      entry: path.join(__dirname, '../../src/handlers/getSummary.ts'),
+      handler: 'handler'
     });
 
     // Grant DynamoDB permissions to all Lambda functions
@@ -144,9 +110,10 @@ export class AvailabilitySchedulerStack extends cdk.Stack {
         stageName: 'prod',
         throttlingRateLimit: 100,
         throttlingBurstLimit: 200,
-        metricsEnabled: true,
-        loggingLevel: apigateway.MethodLoggingLevel.INFO,
-        dataTraceEnabled: true
+        metricsEnabled: true
+        // Logging requires CloudWatch Logs role to be configured in API Gateway settings
+        // loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        // dataTraceEnabled: true
       },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
